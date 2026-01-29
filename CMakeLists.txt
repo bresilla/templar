@@ -63,6 +63,14 @@ endif()
 # ==================================================================================================
 project(${PROJECT_NAME} VERSION ${PROJECT_VERSION} LANGUAGES CXX)
 
+# Load all CMake helper modules from ./cmake
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+file(GLOB _agent47_cmake_modules CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/*.cmake")
+foreach(_mod IN LISTS _agent47_cmake_modules)
+    get_filename_component(_mod_name "${_mod}" NAME_WE)
+    include(${_mod_name})
+endforeach()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -71,7 +79,7 @@ cmake_policy(SET CMP0135 NEW)
 
 # Compiler-specific flags
 set(COMMON_FLAGS -Wall -Wextra -Wpedantic -Wno-reorder -Wno-narrowing -Wno-array-bounds -Wno-vla
-    -Wno-unused-variable -Wno-unused-parameter -Wno-unused-result -Wno-unused-but-set-variablei -Wno-parentheses)
+    -Wno-unused-variable -Wno-unused-parameter -Wno-unused-result -Wno-unused-but-set-variable -Wno-parentheses)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     add_compile_options(${COMMON_FLAGS} -Wno-stringop-overflow -Wno-stringop-overread)
@@ -235,7 +243,7 @@ if(${PROJECT_NAME_UPPER}_BUILD_EXAMPLES)
         get_filename_component(exec_name "${src_file}" NAME_WE)
         add_executable(${exec_name} "${src_file}")
         target_compile_definitions(${exec_name} PRIVATE SHORT_NAMESPACE HAS_RERUN PROJECT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-        target_link_libraries(${exec_name} ${PROJECT_NAME}::${PROJECT_NAME} ${ALL_EXAMPLE_DEPS})
+        target_link_libraries(${exec_name} PRIVATE ${PROJECT_NAME}::${PROJECT_NAME} ${ALL_EXAMPLE_DEPS})
         install(TARGETS ${exec_name} DESTINATION bin)
     endforeach()
 endif()
@@ -254,7 +262,14 @@ if(${PROJECT_NAME_UPPER}_ENABLE_TESTS)
         add_executable(${test_name} "${src_file}")
         target_compile_definitions(${test_name} PRIVATE SHORT_NAMESPACE DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN PROJECT_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
             $<$<BOOL:${${PROJECT_NAME_UPPER}_BIG_TRANSFER}>:BIG_TRANSFER>)
-        target_link_libraries(${test_name} ${PROJECT_NAME}::${PROJECT_NAME} ${ALL_TEST_DEPS})
+        target_link_libraries(${test_name} PRIVATE ${PROJECT_NAME}::${PROJECT_NAME} ${ALL_TEST_DEPS})
         add_test(NAME ${test_name} COMMAND ${test_name})
     endforeach()
 endif()
+
+# Post phase: modules can attach to targets after they exist
+file(GLOB _project_cmake_post_modules CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/*_post.cmake")
+foreach(_mod IN LISTS _project_cmake_post_modules)
+    get_filename_component(_mod_name "${_mod}" NAME_WE)
+    include(${_mod_name})
+endforeach()
